@@ -1,6 +1,6 @@
-# Clip Tagger: Automated Photo Tagging for Dogs
+# Dog Tagger: Automated Photo Tagging for Dogs
 
-Clip Tagger is a project designed to automate the tagging of large photo collections using machine learning. It specializes in detecting and identifying specific subjects—currently focused on two dogs: **Saga** (Holland Shepherd) and **Raff** (Czechoslovakian Wolfdog).
+Dog Tagger is a project designed to automate the tagging of large photo collections using machine learning. It specializes in detecting and identifying specific subjects — currently focused on two dogs: **Saga** (Holland Shepherd) and **Raff** (Czechoslovakian Wolfdog).
 
 The pipeline uses **RF-DETR** or **YOLO** for robust object detection and a custom **Keras 3** classifier (running on the **PyTorch** backend) for fine-grained identification.
 
@@ -85,7 +85,6 @@ python analyze-dogs.py --mode tag-images --collection-root collection/ --valid-t
 ```
 
 ## Directory Structure
-- `training-set/`: Specialist training data (auto-generated crops).
+- `training-set/`: Reference images for known subjects used for training and validation.
 - `dog-detection-keras/`: Default output for annotated Keras analysis.
-- `anchors/`: Reference images for known subjects used for validation.
 - `tricky-images/`: Sample collection for testing edge cases.
