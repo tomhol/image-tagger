@@ -2,7 +2,7 @@
 
 Clip Tagger is a project designed to automate the tagging of large photo collections using machine learning. It specializes in detecting and identifying specific subjects—currently focused on two dogs: **Saga** (Holland Shepherd) and **Raff** (Czechoslovakian Wolfdog).
 
-The pipeline uses **YOLO** for robust object detection and a custom **Keras 3** classifier (running on the **PyTorch** backend) for fine-grained identification.
+The pipeline uses **RF-DETR** or **YOLO** for robust object detection and a custom **Keras 3** classifier (running on the **PyTorch** backend) for fine-grained identification.
 
 ## Workflow
 
@@ -31,8 +31,9 @@ Trains a specialist image classifier using Transfer Learning.
 
 The main analysis script that processes collections of images and generates annotated previews.
 
-- **Hybrid Pipeline**: Combines YOLO for general detection with the custom Keras specialist for identification.
-- **Robustness**: Detects both 'dog' and 'bear' (COCO classes) to catch potential misclassifications by the object detector before passing them to the Keras model.
+- **Hybrid Pipeline**: Combines state-of-the-art detectors (**RF-DETR** or **YOLO**) with a custom Keras specialist for identification.
+- **Detector Options**: Supports **RF-DETR** (default, higher accuracy) and **YOLO** for the initial detection phase.
+- **Robustness**: Filters detections to focus on dogs, passing relevant regions to the Keras model for fine-grained classification.
 - **Annotation**: Draws bounding boxes and labels with confidence scores on detected subjects.
 - **Output**: Saves annotated images to a review directory for manual validation.
 
@@ -44,7 +45,7 @@ The main analysis script that processes collections of images and generates anno
     ```
 2.  **Dependencies**:
     ```bash
-    pip install torch torchvision keras ultralytics opencv-python pillow
+    pip install torch torchvision keras ultralytics rfdetr opencv-python pillow
     ```
 3.  **Keras Backend**: The scripts automatically configure `KERAS_BACKEND="torch"`.
 
@@ -63,9 +64,13 @@ python train_dog_classifier.py
 ```
 
 ### Step 3: Analyze a Collection
-Run the full detection and identification pipeline on a directory of new photos:
+Run the full detection and identification pipeline. By default, it uses **RF-DETR**:
 ```bash
-python analyze-dogs-keras.py --collection-root collection/ --output-dir dog-detection-results/ --threshold 0.7
+# Using default RF-DETR detector
+python analyze-dogs-keras.py --collection-root collection/ --output-dir dog-detection-results/
+
+# Using YOLO detector with custom thresholds
+python analyze-dogs-keras.py --detector yolo --confidence 0.3 --threshold 0.7
 ```
 
 ## Directory Structure
