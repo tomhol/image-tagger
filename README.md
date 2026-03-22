@@ -27,15 +27,18 @@ Trains a specialist image classifier using Transfer Learning.
 - **Output**: Generates `dog_classifier.keras` (model weights) and `dog_classes.txt` (label mapping).
 
 ### 3. Inference & Analysis
-**Script:** `analyze-dogs-keras.py`
+**Script:** `analyze-dogs.py`
 
-The main analysis script that processes collections of images and generates annotated previews.
+The main analysis script that processes collections of images, generates annotated previews, and applies metadata tags.
 
+- **Modes of Operation**:
+  - **`analyze`**: Generates annotated images with bounding boxes and classification scores. Previews are automatically scaled to a maximum of 1600px for easy review.
+  - **`dry-run`**: Performs full analysis and prints detections to the console without modifying any files.
+  - **`tag-images`**: Adds identified dog names (e.g., "Saga", "Raff") as **IPTC keywords** directly to the original image files while preserving original file timestamps.
 - **Hybrid Pipeline**: Combines state-of-the-art detectors (**RF-DETR** or **YOLO**) with a custom Keras specialist for identification.
-- **Detector Options**: Supports **RF-DETR** (default, higher accuracy) and **YOLO** for the initial detection phase.
-- **Robustness**: Filters detections to focus on dogs, passing relevant regions to the Keras model for fine-grained classification.
-- **Annotation**: Draws bounding boxes and labels with confidence scores on detected subjects.
-- **Output**: Saves annotated images to a review directory for manual validation.
+- **Filtering**: Supports glob patterns (`--filter`) to process specific subsets of a collection.
+- **Tag Validation**: Use `--valid-tags` to restrict identification to a specific list of subjects.
+- **Summary Statistics**: Provides a detailed report at the end of each run, including detection counts and average confidence.
 
 ## Installation & Setup
 
@@ -45,7 +48,7 @@ The main analysis script that processes collections of images and generates anno
     ```
 2.  **Dependencies**:
     ```bash
-    pip install torch torchvision keras ultralytics rfdetr opencv-python pillow
+    pip install torch torchvision keras ultralytics rfdetr opencv-python pillow iptcinfo3
     ```
 3.  **Keras Backend**: The scripts automatically configure `KERAS_BACKEND="torch"`.
 
@@ -63,14 +66,22 @@ Once the `training-set/` folder is populated with crops:
 python train_dog_classifier.py
 ```
 
-### Step 3: Analyze a Collection
-Run the full detection and identification pipeline. By default, it uses **RF-DETR**:
-```bash
-# Using default RF-DETR detector
-python analyze-dogs-keras.py --collection-root collection/ --output-dir dog-detection-results/
+### Step 3: Analyze and Tag a Collection
+Run the full detection and identification pipeline.
 
-# Using YOLO detector with custom thresholds
-python analyze-dogs-keras.py --detector yolo --confidence 0.3 --threshold 0.7
+**Generate annotated previews for review:**
+```bash
+python analyze-dogs.py --mode analyze --collection-root collection/ --output-dir review-results/
+```
+
+**Perform a dry-run for specific images:**
+```bash
+python analyze-dogs.py --mode dry-run --collection-root collection/ --filter "2024-05-*.jpg"
+```
+
+**Apply IPTC tags to images (only for Saga and Raff):**
+```bash
+python analyze-dogs.py --mode tag-images --collection-root collection/ --valid-tags "Saga,Raff"
 ```
 
 ## Directory Structure

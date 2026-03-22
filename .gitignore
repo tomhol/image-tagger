@@ -7,3 +7,5 @@ __pycache__
 models
 GEMINI.md
 *.pt
+*.keras
+*.pth
