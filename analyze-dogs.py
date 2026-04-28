@@ -23,8 +23,10 @@ CLASSES_PATH = "dog_classes.txt"
 YOLO_MODEL_PATH = "yolo26l.pt"
 DEFAULT_COLLECTION_ROOT = "tricky-images"
 DEFAULT_REVIEW_OUTPUT_DIR = "dog-detection-keras"
-DOG_ID_YOLO = 16  # Yolo uses 80-based COCO class IDs, where dog is 17th class (index 16 in 0-based)
-DOG_ID_DETR = 18  # DETR uses standard COCO class IDs, dog is traditionally 18
+DOG_ID_YOLO = 16  # Yolo uses 80-based COCO class IDs (dog is 17), and is 0-based (index 16 then)
+DOG_ID_DETR = 18  # DETR uses standard (91-based) COCO class IDs (dog is 18); DETR uses 1-based class IDs
+COCO_LABELS_PATH_YOLO = "coco/coco-labels-80.txt"
+COCO_LABELS_PATH_DETR = "coco/coco-labels-paper.txt"
 DEFAULT_CONFIDENCE = 0.25
 DEFAULT_CLASS_THRESHOLD = 0.5
 MAX_PREVIEW_SIZE = 1600
@@ -33,11 +35,14 @@ MAX_PREVIEW_SIZE = 1600
 iptcinfo_logger = logging.getLogger('iptcinfo')
 iptcinfo_logger.setLevel(logging.ERROR)
 
-def load_class_names(path):
+def load_class_names(path: str, add_item_zero: bool = False):
     if not Path(path).exists():
         return []
     with open(path, "r") as f:
-        return [line.strip() for line in f.readlines()]
+        names = [line.strip() for line in f.readlines()]
+        if add_item_zero:
+            names = [""] + names
+        return names
 
 def analyze_collection(
     collection_root: str,
@@ -48,6 +53,7 @@ def analyze_collection(
     mode: str,
     filter_pattern: str = None,
     valid_tags: str = None,
+    force: bool = False,
 ):
     collection_root = Path(collection_root)
     output_dir = Path(output_dir)
@@ -76,6 +82,13 @@ def analyze_collection(
     class_names = load_class_names(CLASSES_PATH)
     print(f"Known classes: {class_names}")
 
+    coco_labels = []
+    if force:
+        coco_labels = load_class_names(
+            path=COCO_LABELS_PATH_YOLO if detector_type == "yolo" else COCO_LABELS_PATH_DETR,
+            add_item_zero=(detector_type == "detr"),
+        )
+
     valid_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.tiff'}
     if not collection_root.exists():
         print(f"Collection root '{collection_root}' does not exist")
@@ -86,7 +99,7 @@ def analyze_collection(
     else:
         image_paths = sorted([p for p in collection_root.iterdir() if p.is_file() and p.suffix.lower() in valid_extensions])
 
-    print(f"Analyzing {len(image_paths)} images using {detector_type.upper()} (Mode: {mode})...\n")
+    print(f"Analyzing {len(image_paths)} images using {detector_type.upper()} (Mode: {mode}, Force: {force})...\n")
 
     if mode == "analyze":
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -112,7 +125,7 @@ def analyze_collection(
 
         stats["processed"] += 1
         annotated_img = cv2_img.copy() if mode == "analyze" else None
-        has_dog = False
+        has_match = False
         tags_to_apply = set()
         print_labels = []
 
@@ -123,10 +136,13 @@ def analyze_collection(
             for result in results:
                 for box in result.boxes:
                     cls_id = int(box.cls[0])
-                    if cls_id == DOG_ID_YOLO:
+                    is_dog = (cls_id == DOG_ID_YOLO)
+                    if force or is_dog:
                         detections.append({
                             "bbox": map(int, box.xyxy[0]),
-                            "conf": float(box.conf[0])
+                            "conf": float(box.conf[0]),
+                            "is_dog": is_dog,
+                            "cls_id": cls_id
                         })
         else: # detr
             img_rgb = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB)
@@ -134,10 +150,13 @@ def analyze_collection(
             if results.xyxy is not None:
                 for i in range(len(results.xyxy)):
                     cls_id = int(results.class_id[i])
-                    if cls_id == DOG_ID_DETR:
+                    is_dog = (cls_id == DOG_ID_DETR)
+                    if force or is_dog:
                         detections.append({
                             "bbox": map(int, results.xyxy[i]),
-                            "conf": float(results.confidence[i])
+                            "conf": float(results.confidence[i]),
+                            "is_dog": is_dog,
+                            "cls_id": cls_id
                         })
 
         for det in detections:
@@ -149,36 +168,49 @@ def analyze_collection(
             if x2 <= x1 or y2 <= y1:
                 continue
 
-            # Crop and preprocess for Keras
-            crop_bgr = cv2_img[y1:y2, x1:x2]
-            crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
-            resized_img = cv2.resize(crop_rgb, IMG_SIZE)
-            input_array = np.expand_dims(resized_img, axis=0)
+            label = "Unknown"
+            score = det["conf"]
 
-            # Predict class
-            preds = keras_model.predict(input_array, verbose=0)
-            score = np.max(preds[0])
-            class_idx = np.argmax(preds[0])
-            
-            label = class_names[class_idx]
-            if score < threshold:
-                label = "Unknown"
+            if det["is_dog"]:
+                # Crop and preprocess for Keras
+                crop_bgr = cv2_img[y1:y2, x1:x2]
+                crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
+                resized_img = cv2.resize(crop_rgb, IMG_SIZE)
+                input_array = np.expand_dims(resized_img, axis=0)
 
-            # Filter by valid_tags
-            if valid_tags_list and label.lower() not in valid_tags_list:
-                continue
+                # Predict class
+                preds = keras_model.predict(input_array, verbose=0)
+                score = np.max(preds[0])
+                class_idx = np.argmax(preds[0])
+                
+                label = class_names[class_idx]
+                if score < threshold:
+                    label = "Unknown Dog"
+                
+                # Filter by valid_tags
+                if valid_tags_list and label.lower() not in valid_tags_list:
+                    continue
+                
+                stats["detections"] += 1
+                stats["sum_conf"] += score
+                tags_to_apply.add(label)
+                label_text = f"{label} ({score:.2f})"
+            else:
+                # Force-detected non-dog object
+                coco_name = "Object"
+                if 0 <= det["cls_id"] < len(coco_labels):
+                    coco_name = coco_labels[det["cls_id"]]
+                else:
+                    coco_name = f"Class {det['cls_id']}"
+                label = f"[{coco_name}]"
+                label_text = f"{label} ({score:.2f})"
 
-            stats["detections"] += 1
-            stats["sum_conf"] += score
-            has_dog = True
-            
-            label_text = f"{label} ({score:.2f})"
+            has_match = True
             print_labels.append(label_text)
-            tags_to_apply.add(label)
 
             # Annotation
             if mode == "analyze":
-                color = (0, 255, 0)
+                color = (0, 255, 0) if det["is_dog"] else (255, 165, 0) # Green for dogs, Orange for others
                 text_color = (0, 0, 0)
                 font_scale = max(0.5, w_orig / 2000.0)
                 thickness = max(1, int(w_orig / 1000.0))
@@ -187,8 +219,10 @@ def analyze_collection(
                 cv2.rectangle(annotated_img, (x1, y1), (x1 + text_w + 10, y1 + text_h + baseline + 10), color, -1)
                 cv2.putText(annotated_img, label_text, (x1 + 5, y1 + text_h + 5), cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_color, thickness)
 
-        if has_dog:
-            stats["with_dogs"] += 1
+        if has_match:
+            if any(det["is_dog"] for det in detections):
+                stats["with_dogs"] += 1
+            
             print(f"{img_path.name:<30} | {', '.join(print_labels)}")
             
             if mode == "analyze":
@@ -254,9 +288,10 @@ def parse_args():
     parser.add_argument("--detector", type=str, choices=["yolo", "detr"], default="detr", help="Detection model to use (default: detr)")
     parser.add_argument("--confidence", type=float, default=DEFAULT_CONFIDENCE, help="Detection confidence threshold")
     parser.add_argument("--threshold", type=float, default=DEFAULT_CLASS_THRESHOLD, help="Classification confidence threshold")
-    parser.add_argument("--mode", type=str, choices=["analyze", "dry-run", "tag-images"], default="analyze", help="Operational mode")
+    parser.add_argument("--mode", type=str, choices=["analyze", "dry-run", "tag-images"], required=True, help="Operational mode")
     parser.add_argument("--filter", type=str, default=None, help="Glob pattern to filter images (e.g. '2023-12-*.jpg')")
     parser.add_argument("--valid-tags", type=str, default=None, help="Comma-separated list of valid tags (e.g. 'Saga,Raff')")
+    parser.add_argument("--force", action="store_true", help="Include all detected objects, not just dogs (useful for debugging)")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -270,4 +305,5 @@ if __name__ == "__main__":
         mode=args.mode,
         filter_pattern=args.filter,
         valid_tags=args.valid_tags,
+        force=args.force,
     )
