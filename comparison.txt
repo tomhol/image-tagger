@@ -1,0 +1,24 @@
+Yolo 11l via ONNX:
+
+real    0m41.242s
+user    1m6.534s
+sys     0m5.561s
+
+
+yolo 11l
+
+real    0m40.746s
+user    1m16.984s
+sys     0m7.484s
+
+yolo8l
+
+real    0m54.231s
+user    1m52.864s
+sys     0m6.614s
+
+yolo26 L
+
+real    0m38.318s
+user    1m11.633s
+sys     0m6.950s

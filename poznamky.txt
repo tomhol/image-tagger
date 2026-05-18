@@ -1,0 +1,30 @@
+saga je nekdy detekovana jako "bear"
+tagy capitalized (Raff, Saga)
+nekdy je raf zaroven kocka i pes. Vzit v potaz i nizsi confidence = 0.4836 (na posteli zezadu)
+lepe natrenovat -> vice ruznych pozadi, ted je tam vzdy vicemene jen snih
+
+
+
+There is a script @yolo-test.py which is very simple tool to run YOLO on a collection of images, 
+saving the results (image+bbox+class+confidence). Now there is a new kid oon the block: 
+https://blog.delanoe-pirard.com/yolo-is-dead-meet-rf-detr-the-model-that-just-crushed-10-years-of-computer-vision-dominance-49ce17e64c83 
+which seem to be superior to YOLO. Can you create a script similar to the above yolo-test but using RF-DETR (locally) instead?
+
+
+Let's do some final touches to the @analyze-dogs.py:
+ - add a --mode argument to select between 
+  - analyze - the current behaviour (produce images with bounding boxes and confidence), with a slight modification - scale down the images to a maximum size (720x720) keep the aspect ratio, so the output images are not too big, but the bounding boxes are still visible and accurate (the confidence should be the same as before, just the image is smaller)
+  - dry-run - just print the detected classes and confidence to the console, 
+  - tag-images - add tags (IPTC keywords) to the images based on the detected classes (e.g. "Raff", "Saga", "Cakun") and save them in place of the original images (just add the IPTC metadata, do not change the image content)
+    be careful here to keep the original create/modify dates of the images when saving them back
+ - all modes can at the and provide some summary statistics (e.g. number of images processed, number of detections, average confidence, etc.)    
+ - add a --filter argument (glob) to select only a subset of images to process (e.g. --filter "2023-12-*.jpg" to process only images from December 2023)
+ - add a --valid-tags argument to specify which classes should be considered valid for tagging (e.g. --valid-tags "Raff,Saga") - only these classes will be used for tagging (this should apply to all modes, but especially to the tag-images mode)
+ - the logic around the tag-images mode can be taken from the local file @tag-photos-gemini.py, which already has some code to add IPTC keywords to images based on detected classes. You can reuse that code and adapt it to work with the output of the detection model.
+
+
+
+ - analyze mode, print also images with no dogs found
+ - stats to extend with how many images classified with specific class
+ - at the begining print the args, like: using XXX dir for output, etc...
+ - can use multi-core CPU? To speed up...

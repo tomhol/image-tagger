@@ -9,3 +9,14 @@ GEMINI.md
 *.pt
 *.keras
 *.pth
+
+
+tricky*
+reference-photos*
+old-probably-useless
+training-set
+*-output
+images-wiki
+images
+mix 
+dog-detection-keras
