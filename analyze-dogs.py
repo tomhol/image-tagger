@@ -270,7 +270,7 @@ def analyze_collection(
                     print(f"  -> Error writing metadata for {img_path}: {e}")
 
     # Print summary statistics
-    print(f"\n{40*'\u2500'}")
+    print("\n" + 40*'\u2500')
     print(f"Summary Statistics:")
     print(f"  Images processed:      {stats['processed']}")
     print(f"  Images with dogs:     {stats['with_dogs']}")
@@ -279,7 +279,7 @@ def analyze_collection(
         print(f"  Average confidence:   {stats['sum_conf'] / stats['detections']:.4f}")
     if mode == "tag-images":
         print(f"  Images tagged:        {stats['tagged']}")
-    print(f"{40*'\u2500'}")
+    print("\n" + 40*'\u2500')
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze dogs with YOLO/DETR detection and Keras classification.")

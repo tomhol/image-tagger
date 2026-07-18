@@ -13,7 +13,7 @@ from keras import layers
 from pathlib import Path
 
 # Configuration
-DATA_DIR = Path("training-set")
+DATA_DIR = Path("reference-photos-cropped")
 BATCH_SIZE = 32
 IMG_SIZE = (224, 224)
 EPOCHS = 10
