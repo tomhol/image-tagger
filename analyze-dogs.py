@@ -11,7 +11,7 @@ import logging
 import fnmatch
 from pathlib import Path
 from ultralytics import YOLO
-from rfdetr import RFDETRNano
+from rfdetr import RFDETRMedium
 from iptcinfo3 import IPTCInfo
 
 # Configuration matching training script
@@ -70,8 +70,8 @@ def analyze_collection(
         print(f"Loading YOLO model {YOLO_MODEL_PATH}...")
         detector = YOLO(YOLO_MODEL_PATH)
     elif detector_type == "detr":
-        print(f"Loading RF-DETR model \"nano\"...")
-        detector = RFDETRNano(device="cpu")
+        print(f"Loading RF-DETR model \"medium\"...")
+        detector = RFDETRMedium(device="cpu")
         detector.optimize_for_inference(compile=False, batch_size=1, dtype=torch.float32)
     else:
         print(f"Error: Unknown detector type '{detector_type}'")
